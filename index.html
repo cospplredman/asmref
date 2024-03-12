@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Asm reference</title>
+		<link rel="stylesheet" href="styles.css"></link>
+	</head>
+<body>
+<script src="cps.js"></script>
+<script src="instructions.js"></script> <script src="component.js"></script>
+<script>
+let mdata = m8086.trim()
+  .split("\n")
+  .map(v=>v
+    .split("\t")
+    .map(v=>v.trim()))
+  .map(([name, descr, variant, fmt])=>({name, descr, variant, fmt}))
+  .map(v=>(v.fmt = v.fmt.trim().split(",").map(v=>v.trim()), v));
+
+let tdata = t8086.trim().split("\n").map(v=>v.split("\t")).map(([hex, oct, name, descr])=>({hex, oct, name, descr}));
+
+for(let i = 0; i < 4; i++){
+	mdata.forEach((da, i)=>{
+	  let ops = {
+	    "MOD": d => {
+	      let r = {
+		"MOD": ["MOD=0", "MOD=1", "MOD=2", "MOD=3"],
+		"(DISP-LO)": ["", "(DISP-LO)", "(DISP-LO)", ""],
+		"(DISP-HI)": ["", "", "(DISP-HI)", ""]
+	      };
+
+	      return Array(4).fill().map((k,i)=>d.map(v=>r[v]?.[i] ?? v));
+	    },
+	    "data if S:W=01": d => {
+	      let r = {
+		"data if S:W=01": ["data", "", "", ""],
+		"S": ["S=0", "S=1", "S=0", "S=1"],
+		"W": ["W=1", "W=1", "W=0", "W=0"]
+	      };
+
+	      return Array(4).fill().map((k,i)=>d.map(v=>r[v]?.[i] ?? v));
+	    },
+	    "data if W=1": d => {
+	      let r = {
+		"data if W=1": ["data", ""],
+		"W": ["W=1", "W=0"]
+	      };
+
+	      return Array(2).fill().map((k,i)=>d.map(v=>r[v]?.[i] ?? v));
+	    },
+	  };
+
+	  Object.keys(ops).forEach(v=>{
+	    if(da.fmt.includes(v))
+	      mdata[i] = ops[v](da.fmt).map(v=>({...da, fmt: v.filter(v=>v!="")}));
+	  })
+
+	});
+
+	mdata = mdata.flat();
+}
+
+let Bit = one_of(..."01");
+let Tag = tag => nd => nxt => Nd(tag)((le, cle) => cle(1)(nd)(le(0)(nxt)));
+let Byte = all(Bit, Bit, Bit, Bit, Bit, Bit, Bit, Bit);
+
+
+let parse_impl = {
+  "1": eq("1"),
+  "0": eq("0"),
+  "D": Bit,
+  "W": Bit,
+  "W=0": eq("0"),
+  "W=1": eq("1"),
+  "MOD": all(Bit, Bit),
+  "MOD=0": all(eq("0"), eq("0")),
+  "MOD=1": all(eq("0"), eq("1")),
+  "MOD=2": all(eq("1"), eq("0")),
+  "MOD=3": all(eq("1"), eq("1")),
+  "REG": all(Bit, Bit, Bit),
+  "R/M": all(Bit, Bit, Bit),
+  "(DISP-LO)": Byte,
+  "(DISP-HI)": Byte,
+  "data": Byte,
+  "ADDR-LO": Byte,
+  "ADDR-HI": Byte,
+  "SR": all(Bit, Bit),
+  "DATA-8": Byte,
+  "S": Bit,
+  "S=0": eq("0"),
+  "S=1": eq("1"),
+  "V": Bit,
+  "Z": Bit,
+  "IP-INC-LO": Byte,
+  "IP-INC-HI": Byte,
+  "SP-INC-LO": Byte,
+  "SP-INC-HI": Byte,
+  "IP-LO": Byte,
+  "IP-HI": Byte,
+  "IP-INC8": Byte,
+  "data-lo": Byte,
+  "data-hi": Byte,
+  "xxx": all(Bit, Bit, Bit),
+  "yyy": all(Bit, Bit, Bit),
+  "": id
+};
+
+
+let match_instructions = (str) => {
+  let k = some(
+    ...mdata.map(v=>
+        Tag(v)(all(
+          ...v.fmt.map(v=>
+            Tag(v)(parse_impl[v])
+          )
+        ))
+      )
+    );
+
+  return seq(...str)( many(some(k, Tag("byte")(Byte)))(eq("nil")()) )(Json);
+}
+
+let hex2bin = str => [...str].map(v=>(+("0x"+v)).toString(2).padStart(4, "0")).join("");
+
+match_instructions(hex2bin("83e4f0"))
+
+
+let mw = {
+  "1": 1,
+  "0": 1,
+  "D": 1,
+  "W": 1,
+  "W=0": 1,
+  "W=1": 1,
+  "MOD": 2,
+  "MOD=0": 2,
+  "MOD=1": 2,
+  "MOD=2": 2,
+  "MOD=3": 2,
+  "REG": 3,
+  "R/M": 3,
+  "(DISP-LO)": 8,
+  "(DISP-HI)": 8,
+  "data": 8,
+  "ADDR-LO": 8,
+  "ADDR-HI": 8,
+  "SR": 2,
+  "DATA-8": 8,
+  "S": 1,
+  "S=0": 1,
+  "S=1": 1,
+  "V": 1,
+  "Z": 1,
+  "IP-INC-LO": 8,
+  "IP-INC-HI": 8,
+  "SP-INC-LO": 8,
+  "SP-INC-HI": 8,
+  "IP-LO": 8,
+  "IP-HI": 8,
+  "IP-INC8": 8,
+  "data-lo": 8,
+  "data-hi": 8,
+  "xxx": 3,
+  "yyy": 3,
+  "": 0
+}
+
+let B1 = Border("0.45em", "0.1em", "0.45em", "border");
+let B2 = Border("0em", "0.1em", "0.1em", "border2");
+
+let TextBox = (sz, col = "black", al = "left", pre = false) => text => all(
+  Block(el(pre ? "pre" : "div")),
+  Style({fontSize: sz, color: col, textAlign: al}),
+  Text(text)
+)
+
+let AsmCell = data =>
+  Rect("4em", "4em")(B2(vpart()(
+    TextBox("10px")((data.name ?? "-").replaceAll("/", " / ")),
+    TextBox("8px")(data.descr ?? ""),
+    TextBox("8px", "darkred")(data.hex)
+  )))
+
+let Table =
+  col(...Array(16).fill()
+    .map((v,i)=>row(...Array(16).fill()
+      .map((v,j)=>AsmCell(tdata[i*16 + j])))));
+
+
+//--------------------------------
+let dialog = nd => all(
+  el("dialog"),
+  Style({
+    borderColor: "black",
+	borderStyle: "solid",
+	borderRadius: "0.5em",
+	borderWidth: "0.1em",
+	padding: "0.45em",
+    top: "0.45em",
+    left: "0.45em",
+    margin: "0",
+    overflow: "hidden",
+    zIndex: 100
+  }),
+  Children(nd)
+);
+
+let DialogButton = (nd, dn) => {
+  let id = class_prefix + (class_gid++);
+  return Button(
+    all(
+      Overlap(
+        nd,
+        Button(all(
+          dialog(dn),
+          Attr("id", id)
+        ), e => {
+          document.getElementById(id).close();
+          e.stopPropagation();
+        }),
+      ),
+      Style({overflow: "visible"})
+    )
+  , e => {
+    document.getElementById(id).show()
+  })
+}
+
+let fdesc = {};
+fmtdescr.trim().split("\n\n").map(v=>v.split("\n")).forEach(([name, ...x])=>fdesc[name.split("\t")[0]] = name + "\n" + x.join("\n"));
+//--------------------------------
+
+let BitSpan = (text, bits) => Rect(`2.5em * (${bits})`, "1.5em")(
+	DialogButton(
+		B2(TextBox("10px", "black", "center")(text)),
+		TextBox("12px", "black", "left", true)(
+			fdesc[text.split("=")[0]]
+		)
+	)
+)
+
+let Format = fmt => row(
+  ...fmt.filter(v=>v!="").map(v=>BitSpan(v, mw[v]))
+);
+
+let Variant = data => vpart()(
+  TextBox("12px")(data.variant),
+  Format(data.fmt)
+);
+
+let mgroup = {};
+mdata.map(v=>(mgroup[v.name] ??= []).push(v))
+
+
+let Entry = ([name, data]) => all(
+  B1(col(
+    TextBox("14px")(name),
+    TextBox("12px")(data[0].descr),
+    ...data.map(Variant)
+  ))
+)
+
+
+document.body = to_el(Body(
+  Scroll(col(
+    B1(Scroll(Center("4em * 16", "4em * 16")(Table))),
+    col(...Object.entries(mgroup).map(Entry))
+  ))
+))
+
+</script>
+
+</body>
+</html>

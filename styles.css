@@ -1,0 +1,61 @@
+/* TODO generate these */
+.vpart {
+	display: flex;
+	flex-direction: column;
+}
+
+.break {
+	break-after: page;
+}
+
+.hpart {
+	display: flex;
+	flex-direction: row;
+}
+
+.partBlock {
+	flex: 1;
+}
+
+.Block {
+	min-height: 100%;
+	width: auto;
+	padding: 0;
+	margin: 0;
+	border: 0;
+}
+
+.border {
+	border-color: grey;
+	border-style: solid;
+	border-radius: 0.5em;
+	border-width: 0.1em;
+	padding: 0.45em;
+	margin: 0.45em;
+    	overflow: visible;
+	width: calc(100% - 2*(0.45em) - 2*(0.1em) - 2*(0.45em));
+	height: calc(100% - 2*(0.45em) - 2*(0.1em) - 2*(0.45em));
+}
+
+.border2 {
+	border-color: grey;
+	border-style: solid;
+	border-radius: 0.5em;
+	border-width: 0.1em;
+	padding: 0;
+	margin: 0.1em;
+    	overflow: visible;
+	height: calc(100% - 2*(0.1em) - 2*(0.1em));
+	width: calc(100% - 2*(0.1em) - 2*(0.1em));
+}
+
+
+body {
+	color: grey;
+	width: 100vw;
+	height: 100vh;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	font-size: 12px;
+}
